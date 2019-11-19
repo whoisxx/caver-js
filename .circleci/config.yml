@@ -104,8 +104,8 @@ jobs:
               version=$(.circleci/version.sh)
               #delete release branch. it trigger by merge title
               if [[ "release/v" = $(git log --oneline -1 | grep -o "release/v") ]]; then
-                echo "Delete branch release/$version"
-                git push origin --delete release/$version
+                echo "Delete branch release/v$version"
+                git push origin --delete release/v$version
               else
                 echo "Need to delete branch manually"
               fi
@@ -195,4 +195,3 @@ workflows:
             branches:
               ignore: /.*/
 
-              
