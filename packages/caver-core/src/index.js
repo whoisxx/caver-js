@@ -30,58 +30,69 @@ const Method = require('../../caver-core-method')
 const utils = require('../../caver-utils')
 
 // extend
-const extend = (pkg) => {
-  const ex = (extension) => {
-    let extendedObject = pkg
+const extend = pkg => {
+    const ex = extension => {
+        let extendedObject = pkg
 
-    if (extension.property) {
-      extendedObject = pkg[extension.property] = pkg[extension.property] || {}
-    }
-
-    if (extension.methods) {
-      extension.methods.forEach((method) => {
-        if(!(method instanceof Method)) {
-          method = new Method(method)
+        if (extension.property) {
+            extendedObject = pkg[extension.property] = pkg[extension.property] || {}
         }
 
-        method.attachToObject(extendedObject)
-        method.setRequestManager(pkg._requestManager)
-      })
+        if (extension.methods) {
+            extension.methods.forEach(method => {
+                if (!(method instanceof Method)) {
+                    method = new Method(method)
+                }
+
+                method.attachToObject(extendedObject)
+                method.setRequestManager(pkg._requestManager)
+            })
+        }
+
+        return pkg
     }
 
-    return pkg
-  }
+    ex.formatters = formatters
+    ex.utils = utils
+    ex.Method = Method
 
-  ex.formatters = formatters
-  ex.utils = utils
-  ex.Method = Method
-
-  return ex
+    return ex
 }
 
 module.exports = {
-  packageInit: function (pkg, [provider, net]) {
-    if (!pkg) throw new Error('You need to instantiate using the "new" keyword.')
+    packageInit: function(pkg, [provider, net]) {
+        if (!pkg) throw new Error('You need to instantiate using the "new" keyword.')
 
-    if (provider && provider._requestManager) {
-      pkg._requestManager = new Manager(provider.currentProvider)
-    // set requestmanager on package
-    } else {
-      pkg._requestManager = new Manager(provider, net)
-    }
+        // make property of pkg._provider, which can properly set providers
+        Object.defineProperty(pkg, 'currentProvider', {
+            get: function() {
+                return pkg._provider
+            },
+            set: function(value) {
+                return pkg.setProvider(value)
+            },
+            enumerable: true,
+            configurable: true,
+        })
 
-    pkg.providers = Manager.providers
+        if (provider && provider._requestManager) {
+            pkg._requestManager = new Manager(provider.currentProvider)
+            // set requestmanager on package
+        } else {
+            pkg._requestManager = new Manager(provider, net)
+        }
 
-    pkg._provider = pkg._requestManager.provider
-    pkg.currentProvider = pkg._provider
+        pkg.providers = Manager.providers
 
-    // add SETPROVIDER function (don't overwrite if already existing)
-    if (!pkg.setProvider) {
-      pkg.setProvider = (provider, net) => pkg._provider = pkg._requestManager.setProvider(provider, net).provider
-    }
+        pkg._provider = pkg._requestManager.provider
 
-    // attach batch request creation
-    pkg.BatchRequest = BatchManager.bind(null, pkg._requestManager)
-  },
-  providers: Manager.providers,
+        // add SETPROVIDER function (don't overwrite if already existing)
+        if (!pkg.setProvider) {
+            pkg.setProvider = (p, n) => (pkg._provider = pkg._requestManager.setProvider(p, n).provider)
+        }
+
+        // attach batch request creation
+        pkg.BatchRequest = BatchManager.bind(null, pkg._requestManager)
+    },
+    providers: Manager.providers,
 }
